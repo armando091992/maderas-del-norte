@@ -22,31 +22,11 @@ const sub=()=>Object.entries(cart).reduce((a,[i,q])=>a+P.find(x=>x.id==i).p*q,0)
 function drawCart(){const e=Object.entries(cart);
 $("#cl").innerHTML=e.length?e.map(([i,q])=>{const p=P.find(x=>x.id==i);return `<div class="ln"><span>${p.n} × ${q}</span><span>${money(p.p*q)} <button class="mini" onclick="rm(${i})">−</button></span></div>`}).join(""):"<small>Tu carrito está vacío.</small>";
 $("#tot").textContent=money(e.length?sub()+Z[$("#zn").value][1]:0);$("#ok").disabled=!e.length||!$("#nm").value.trim()}
-
-async function place(o){
-  if(!sb) {
-    o.id="MN-"+(1001+orders.length);o.st="Pedido recibido";orders.push(o);
-    o.it.forEach(x=>P.find(p=>p.id==x.id).s-=x.q);shop();dueno()?go(1):toast("¡Pedido confirmado! "+o.id+" · te avisamos la entrega por WhatsApp");flow(o);panel();
-    return;
-  }
-  const r=await sb.rpc("crear_pedido",{
-    p_cliente: o.nm,
-    p_zona: o.zn,
-    p_franja: o.sl,
-    p_revendedor: o.rf,
-    p_origen: "tienda",
-    p_items: o.it.map(x=>({producto_id:x.id,cantidad:x.q}))
-  });
-  if(r.error)return toast("No se pudo crear el pedido: "+r.error.message);
-  o.id="MN-"+r.data;await sync();dueno()?go(1):toast("¡Pedido confirmado! "+o.id+" · te avisamos la entrega por WhatsApp");flow(o);
-  if(CFG.N8N_ORDER_WEBHOOK)fetch(CFG.N8N_ORDER_WEBHOOK,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({pedidoId:r.data,cliente:o.nm,zona:o.zn,franja:o.sl,revendedor:o.rf,total:o.tot,items:o.it})}).catch(()=>{})
-}
-
 $("#ok").onclick=()=>{const it=Object.entries(cart).map(([i,q])=>({p:P.find(x=>x.id==i),q}));
 const o={nm:$("#nm").value.trim().replace(/</g,"&lt;"),zn:Z[$("#zn").value][0],sl:$("#sl").value,rf:$("#rf").value=="0"?"":R[$("#rf").value],tot:sub()+Z[$("#zn").value][1],u:it.reduce((a,x)=>a+x.q,0),it:it.map(x=>({id:x.p.id,q:x.q}))};
 cart={};$("#nm").value="";drawCart();place(o)};
-
 function demo(){if(P[0].s<1)return toast("Sin stock de la mesa ratona: reponga en Panel y QR > Inventario");place({nm:"Cliente de ejemplo",zn:Z[1][0],sl:slots[0],rf:"Mueblería A",tot:P[0].p+Z[1][1],u:1,it:[{id:1,q:1}]})}
+function place(o){o.id="MN-"+(1001+orders.length);o.st="Pedido recibido";orders.push(o);o.it.forEach(x=>P.find(p=>p.id==x.id).s-=x.q);shop();dueno()?go(1):toast("¡Pedido confirmado! "+o.id+" · te avisamos la entrega por WhatsApp");flow(o);panel()}
 function flow(o){const S=["Webhook: pedido "+o.id+" recibido desde la tienda","Validar y descontar stock: "+o.it.map(x=>{const p=P.find(q=>q.id==x.id);return p.n+" × "+x.q+" (quedan "+p.s+")"}).join(", ")+(o.it.some(x=>P.find(q=>q.id==x.id).s<=3)?" · alerta de stock bajo":""),"Avisar a producción y despacho","Confirmar al cliente por WhatsApp (ManyChat)","Agendar entrega: "+o.zn+" · "+o.sl,"Registrar en el panel de KPIs"+(o.rf?" y comisión para "+o.rf:"")];
 $("#fl").innerHTML=S.map((s,i)=>`<div class="nd" id="n${i}"><i>${i+1}</i><span>${s}</span></div>`).join("");$("#wa").hidden=true;
 S.forEach((_,i)=>setTimeout(()=>{$("#n"+i).classList.add("on");if(i==3){$("#wa").innerHTML="<small>Mensaje al cliente</small><br>Hola "+o.nm+", recibimos tu pedido "+o.id+" por "+money(o.tot)+". Entrega: "+o.sl+" ("+o.zn+"). Respondé este mensaje si necesitás cambiar la franja.";$("#wa").hidden=false}},600*(i+1)));
@@ -59,9 +39,7 @@ envio:()=>Z.map(z=>`• ${z[0]}: ${z[1]?money(z[1]):"sin costo"}`).join("<br>")+
 pedido:()=>{const o=orders[orders.length-1];return o?`Tu pedido ${o.id}: ${o.st}. Entrega: ${o.sl}.`:"Todavía no tenés pedidos. Podés hacerlo en la pestaña Tienda."},
 humano:()=>{bot.h++;return "Te derivo con una persona del equipo. Te responden en horario comercial."}};
 say("¡Hola! Soy el asistente de Fábrica a tu Casa. ¿En qué te ayudo?");
-async function dl(i,v){if(!sb){orders[i].d=v;panel();return;}await sb.rpc("marcar_entrega",{p_id:orders[i]._id,p_estado:v});sync()}
-async function rs(id){if(!sb){P.find(p=>p.id==id).s+=10;panel();shop();toast("Stock repuesto: +10 unidades");return;}await sb.rpc("reponer_stock",{p_id:id,p_cant:10});toast("Stock repuesto: +10 unidades");sync()}
-
+function dl(i,v){orders[i].d=v;panel()}
 function panel(){inv();const u=orders.reduce((a,o)=>a+o.u,0),sh=u/(u+90)*100,dn=orders.filter(o=>o.d=="ok").length,lt=orders.filter(o=>o.d=="late").length,ot=dn+lt?dn/(dn+lt)*100:null,rf=orders.filter(o=>o.rf);
 const st=r=>r==null?["no","Sin datos"]:r>=1?["ok","En meta"]:["mid","En camino"];
 const K=[["Venta directa",sh.toFixed(1)+"%",u?sh/10:null,"Meta: 10% de las unidades","Qué mide: qué parte de las unidades se vende sin pasar por un revendedor.","Cómo se calcula: unidades de la tienda ÷ (unidades de la tienda + 90 de base de revendedores)."],
@@ -71,7 +49,6 @@ const K=[["Venta directa",sh.toFixed(1)+"%",u?sh/10:null,"Meta: 10% de las unida
 $("#k").innerHTML=K.map(([a,b,r,m,w,x])=>{const s=st(r);return `<div class="kc ${s[0]}"><div class="kh"><small>${a}</small><span class="bd ${s[0]}">${s[1]}</span></div><div class="ring" style="--p:${r==null?0:Math.min(100,r*100)}"><strong>${b}</strong></div><small><b>${m}</b></small><details><summary>¿Qué mide?</summary><p class="kx">${w}</p><p class="kx">${x}</p></details></div>`}).join("");
 $("#ot").innerHTML=orders.length?orders.map((o,i)=>`<tr><td>${o.id}</td><td>${o.nm}</td><td>${money(o.tot)}</td><td>${o.d=="ok"?"Entregado en fecha":o.d=="late"?"Entregado con demora":o.st}</td><td>${o.d?"":`<button class="mini" onclick="dl(${i},'ok')">En fecha</button> <button class="mini" onclick="dl(${i},'late')">Con demora</button>`}</td></tr>`).join(""):`<tr><td colspan="5"><small>Sin pedidos todavía.</small></td></tr>`;
 $("#cm").innerHTML=R.slice(1).map(r=>{const f=rf.filter(o=>o.rf==r);return `<tr><td>${r}</td><td>${f.length}</td><td>${money(Math.round(f.reduce((a,o)=>a+o.tot,0)*.05))}</td></tr>`}).join("")}
-
 function qrdraw(i){const n=21;let x=i*7+3,s=`<svg viewBox="0 0 ${n} ${n}" width="140" height="140" shape-rendering="crispEdges"><rect width="${n}" height="${n}" fill="#fff"/>`;
 const f=(a,b)=>`<path fill="#2A1C10" d="M${a} ${b}h7v7h-7z"/><path fill="#fff" d="M${a+1} ${b+1}h5v5h-5z"/><path fill="#2A1C10" d="M${a+2} ${b+2}h3v3h-3z"/>`;s+=f(0,0)+f(14,0)+f(0,14);
 for(let y=0;y<n;y++)for(let c=0;c<n;c++){if((c<8&&y<8)||(c>12&&y<8)||(c<8&&y>12))continue;x=(Math.imul(x,1103515245)+12345)&0x7fffffff;if(x%3==0)s+=`<rect x="${c}" y="${y}" width="1" height="1" fill="#2A1C10"/>`}return s+"</svg>"}
@@ -80,7 +57,9 @@ $("#qs").onchange=qrshow;qrshow();drawCart();panel();
 $("#fab").onclick=()=>{$("#cw").hidden=!$("#cw").hidden;if(!$("#cw").hidden)$("#in").focus()};
 $("#cx").onclick=()=>{$("#cw").hidden=true};
 function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2400)}
+function rs(id){P.find(p=>p.id==id).s+=10;panel();shop();toast("Stock repuesto: +10 unidades")}
 function inv(){const lo=P.filter(p=>p.s<=3).length;$("#sa").textContent=lo?" · "+lo+" con stock bajo":"";$("#inv").innerHTML=P.map(p=>{const k=p.s<1?["low","Sin stock"]:p.s<=3?["mid","Stock bajo"]:["ok","Normal"];return `<tr><td>${p.n}</td><td><b>${p.s}</b> u.</td><td><span class="bd ${k[0]}">${k[1]}</span></td><td><button class="mini" onclick="rs(${p.id})">Reponer +10</button></td></tr>`}).join("")}
+
 function mode(d){document.body.classList.toggle("dueno",d);$("#md").textContent=d?"Salir de la vista del dueño":"Ingresar como dueño";$("#cw").hidden=true;go(d?2:0)}
 $("#md").onclick=()=>mode(!dueno());
 
@@ -88,17 +67,20 @@ $("#md").onclick=()=>mode(!dueno());
 const CFG=window.CONFIG||{},sb=(CFG.SUPABASE_URL&&CFG.SUPABASE_ANON_KEY&&window.supabase)?window.supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_ANON_KEY):null;
 const SID=window.crypto&&crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random();
 const esc=t=>String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/\n/g,"<br>");
-
 async function sync(){if(!sb)return;
-try {
-  const a=await sb.from("productos").select("*").order("id"),b=await sb.from("pedidos").select("*").order("id");
-  if(a.error||b.error)return;
-  P.length=0;a.data.forEach(r=>P.push({id:r.id,s:r.stock,i:r.imagen,n:r.nombre,p:Number(r.precio),m:r.medidas,w:r.madera,c:r.categoria,t:r.icono}));
-  orders=b.data.map(r=>({_id:r.id,id:"MN-"+r.id,nm:r.cliente,zn:r.zona,sl:r.franja,rf:r.revendedor||"",tot:Number(r.total),u:r.unidades,st:r.estado,d:r.entrega||undefined,it:[]}));
-  shop();panel();
-} catch(e) {}
-}
-
+const a=await sb.from("productos").select("*").order("id"),b=await sb.from("pedidos").select("*").order("id");
+if(a.error||b.error)return toast("No se pudo leer la base de datos");
+P.length=0;a.data.forEach(r=>P.push({id:r.id,s:r.stock,i:r.imagen,n:r.nombre,p:Number(r.precio),m:r.medidas,w:r.madera,c:r.categoria,t:r.icono}));
+orders=b.data.map(r=>({_id:r.id,id:"MN-"+r.id,nm:r.cliente,zn:r.zona,sl:r.franja,rf:r.revendedor||"",tot:Number(r.total),u:r.unidades,st:r.estado,d:r.entrega||undefined,it:[]}));
+shop();panel()}
+const _place=place;
+place=async function(o){if(!sb)return _place(o);
+const r=await sb.rpc("crear_pedido",{p_cliente:o.nm,p_zona:o.zn,p_franja:o.sl,p_revendedor:o.rf,p_items:o.it.map(x=>({producto_id:x.id,cantidad:x.q}))});
+if(r.error)return toast("No se pudo crear el pedido: "+r.error.message);
+o.id="MN-"+r.data;await sync();dueno()?go(1):toast("¡Pedido confirmado! "+o.id+" · te avisamos la entrega por WhatsApp");flow(o);
+if(CFG.N8N_ORDER_WEBHOOK)fetch(CFG.N8N_ORDER_WEBHOOK,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({pedidoId:r.data,cliente:o.nm,zona:o.zn,franja:o.sl,revendedor:o.rf,total:o.tot,items:o.it})}).catch(()=>{})};
+const _dl=dl;dl=async function(i,v){if(!sb)return _dl(i,v);await sb.rpc("marcar_entrega",{p_id:orders[i]._id,p_estado:v});sync()};
+const _rs=rs;rs=async function(id){if(!sb)return _rs(id);await sb.rpc("reponer_stock",{p_id:id,p_cant:10});toast("Stock repuesto: +10 unidades");sync()};
 async function botReply(msg,k){
 if(CFG.N8N_CHAT_WEBHOOK){try{const c=new AbortController(),t=setTimeout(()=>c.abort(),15000),o=orders[orders.length-1];
 const r=await fetch(CFG.N8N_CHAT_WEBHOOK,{method:"POST",headers:{"Content-Type":"application/json"},signal:c.signal,body:JSON.stringify({sesionId:SID,mensaje:msg,pedidoId:o?o.id:null})});
@@ -109,3 +91,46 @@ async function free(){const v=$("#in").value.trim();if(!v)return;$("#in").value=
 const k=/cat|mueble|precio/i.test(v)?"catalogo":/medida|tama/i.test(v)?"medidas":/env|entrega|flete/i.test(v)?"envio":/pedido|estado|segui/i.test(v)?"pedido":/persona|humano|asesor/i.test(v)?"humano":"";
 bot.q++;say(v.replace(/</g,"&lt;"),1);say("<i>Escribiendo…</i>");const r=await botReply(v,k);$("#ch").lastChild.remove();say(r);panel()}
 sync();
+
+/* ---- Madera en depósito (lecturas del sensor y alertas) ---- */
+async function madera(){const w=$("#mw");if(!w)return;
+if(!sb){w.innerHTML="<small>Conectá Supabase en config.js para ver las lecturas del sensor.</small>";return}
+const a=await sb.from("materiales").select("*").order("nombre"),b=await sb.from("alertas").select("*").eq("resuelta",false).order("created_at",{ascending:false}).limit(8);
+if(a.error||b.error){w.innerHTML="<small>Todavía no está creada la tabla del sensor (ejecutá supabase_sensor.sql).</small>";return}
+w.innerHTML=a.data.map(m=>{const mx=Math.max(m.kg_minimo*5,m.kg_actual),pc=Math.min(100,m.kg_actual/mx*100),st=m.kg_actual<m.kg_minimo?"crit":m.kg_actual<m.kg_minimo*1.5?"warn":"ok";return`<div class="mrow"><span>${esc(m.nombre)}</span><div class="mbar"><i class="${st}" style="width:${pc}%"></i></div><b>${Math.round(m.kg_actual)} kg</b><small>mín. ${Math.round(m.kg_minimo)}</small></div>`}).join("");
+$("#ma").innerHTML=b.data.length?b.data.map(x=>`<div class="mal ${x.nivel}">${esc(x.mensaje)}</div>`).join(""):"<small>Sin alertas activas.</small>";
+$("#mt").textContent="· actualizado "+new Date().toLocaleTimeString()}
+madera();setInterval(()=>{const s=$("#s3");if(s&&!s.hidden)madera()},5000);
+
+/* ---- Acceso del dueño (Supabase Auth). Sin Supabase configurado, la vista del dueño queda abierta (modo demo). ---- */
+const isOwner=async()=>{if(!sb)return true;const r=await sb.rpc("es_dueno");return r.data===true};
+async function login(){const e=$("#le").value.trim(),p=$("#lp").value,m=$("#lm");m.textContent="";
+if(!e||!p){m.textContent="Completá el correo y la contraseña.";return}
+$("#lb").disabled=true;const r=await sb.auth.signInWithPassword({email:e,password:p});
+if(r.error){m.textContent="Correo o contraseña incorrectos.";$("#lb").disabled=false;return}
+if(!await isOwner()){await sb.auth.signOut();m.textContent="Esta cuenta no tiene permiso de dueño.";$("#lb").disabled=false;return}
+$("#lb").disabled=false;$("#lp").value="";$("#lg").hidden=true;await sync();mode(true)}
+$("#lb").onclick=login;$("#lx").onclick=()=>{$("#lg").hidden=true};
+$("#lp").onkeydown=ev=>{if(ev.key==="Enter")login()};
+$("#md").onclick=async()=>{if(dueno()){if(sb&&CFG.REQUIRE_LOGIN!==false){await sb.auth.signOut();await sync()}return mode(false)}
+if(!sb||CFG.REQUIRE_LOGIN===false)return mode(true);
+const s=await sb.auth.getSession();if(s.data.session&&await isOwner()){await sync();return mode(true)}
+$("#lg").hidden=false;$("#le").focus()};
+
+/* ---- Asistente interno del dueño (n8n verifica la sesión con Supabase) ---- */
+let CM="c";const OQ=["¿Cuánta madera queda?","¿Hay alertas?","¿Qué muebles tienen poco stock?","¿Cuándo se acaba el pino?"];
+function askText(t){$("#in").value=t;free()}
+function chatMode(o){CM=o?"o":"c";$("#ch").innerHTML="";
+$(".cwh b").textContent=o?"Asistente interno · Maderas del Norte":"Asistente de Fábrica a tu Casa";
+$(".cwh small").textContent=o?"Solo para el dueño · madera, stock y alertas":"En línea · responde al instante";
+$("#in").placeholder=o?"Preguntá por la madera, el stock o las alertas…":"Escribí tu consulta…";
+$(".eqc").textContent=o?"Equivale a: asistente en n8n conectado al sensor del depósito":"Equivale a: ManyChat en WhatsApp o Instagram";
+$("#qr").innerHTML=o?OQ.map(q=>`<button class="chip" onclick="askText('${q}')">${q}</button>`).join(""):Q.map(([k,l])=>`<button class="chip" onclick="ask('${k}','${l}')">${l}</button>`).join("");
+say(o?"Hola. Soy el asistente interno: puedo decirte los niveles de madera, las alertas, cuántos muebles se pueden fabricar y cuándo se agota un material.":"¡Hola! Soy el asistente de Fábrica a tu Casa. ¿En qué te ayudo?")}
+async function ownerReply(msg){if(!CFG.N8N_OWNER_WEBHOOK)return "Falta configurar N8N_OWNER_WEBHOOK en config.js.";
+if(!sb)return "El asistente interno necesita Supabase configurado.";
+try{const s=(await sb.auth.getSession()).data.session,c=new AbortController(),t=setTimeout(()=>c.abort(),25000);
+const r=await fetch(CFG.N8N_OWNER_WEBHOOK,{method:"POST",headers:{"Content-Type":"application/json"},signal:c.signal,body:JSON.stringify({sesionId:SID,mensaje:msg,token:s?s.access_token:""})});
+clearTimeout(t);const j=await r.json();return esc(j.respuesta||"Sin respuesta.")}catch(e){return "No pude consultar al asistente interno. Probá de nuevo en un momento."}}
+const _br=botReply;botReply=async function(m,k){return CM==="o"?ownerReply(m):_br(m,k)};
+const _mode=mode;mode=function(d){_mode(d);chatMode(d)};

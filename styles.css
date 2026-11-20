@@ -169,3 +169,19 @@ body{background:linear-gradient(rgba(239,228,206,.94),rgba(239,228,206,.94)),url
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(47,90,61,.55)}100%{box-shadow:0 0 0 18px rgba(47,90,61,0)}}
 .ft{display:grid;gap:4px;margin-top:34px;padding:22px;border-radius:12px;background:var(--top);color:#E4E9DA;text-align:center}.ft b{font-size:18px;color:#fff}.ft small{color:#B9C2BB}
 @media(prefers-reduced-motion:reduce){#fab{animation:none}.pc,.hero .go{transition:none}}
+
+/* ---- Sensor de madera ---- */
+.mrow{display:grid;grid-template-columns:90px 1fr 80px 70px;gap:10px;align-items:center;margin:10px 0;text-transform:capitalize}
+.mbar{height:14px;border-radius:99px;background:var(--tint);overflow:hidden;border:1px solid var(--line)}
+.mbar i{display:block;height:100%;border-radius:99px;transition:width .6s}
+.mbar i.ok{background:var(--eu)}.mbar i.warn{background:#d9a21b}.mbar i.crit{background:var(--red)}
+.mal{padding:8px 12px;border-radius:8px;margin:6px 0;font-size:14px;border-left:5px solid #d9a21b;background:#fbf1d6;color:#3a2a10}
+.mal.critico{border-left-color:var(--red);background:#f7dcd6}
+@media(max-width:520px){.mrow{grid-template-columns:70px 1fr 70px}.mrow small{display:none}}
+
+/* ---- Acceso del dueño ---- */
+#lg{position:fixed;inset:0;background:rgba(10,18,12,.65);display:grid;place-items:center;z-index:60}
+#lg[hidden]{display:none}
+.lgb{background:var(--sf);border:1px solid var(--line);border-radius:12px;padding:22px;width:min(380px,92vw);display:grid;gap:8px;box-shadow:0 24px 60px -20px rgba(0,0,0,.7)}
+#lm{color:var(--red);font-size:14px;min-height:18px}
+.lgr{display:flex;gap:8px;justify-content:flex-end}

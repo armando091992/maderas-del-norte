@@ -28,6 +28,7 @@
 <h2>Panel de resultados</h2><span class="eq">Equivale a: planilla o tablero + QR dinámico</span>
 <div class="note">Cada anillo compara un resultado con la meta del desafío. Es una simulación: hacé pedidos en la Tienda y mirá cómo se mueven los números.</div>
 <div class="kg" id="k"></div>
+<div class="box"><b>Madera en depósito</b> <small id="mt"></small><span class="eq">Equivale a: sensor IoT (simulado) + alertas de n8n</span><div id="mw"></div><div id="ma"></div><small>Un dispositivo en el depósito mide los kilos de madera y envía cada lectura a n8n. Si la madera baja del mínimo o no alcanza para reponer un mueble con poco stock, se genera una alerta.</small></div>
 <div class="box"><b>Inventario (control de stock)</b> <small id="sa"></small><div style="overflow-x:auto"><table><tr><th>Producto</th><th>Stock</th><th>Estado</th><th></th></tr><tbody id="inv"></tbody></table></div><small>Cada pedido descuenta stock automáticamente y el sistema avisa cuando quedan 3 unidades o menos.</small></div>
 <div class="box"><b>Pedidos</b><div style="overflow-x:auto"><table><tr><th>N.º</th><th>Cliente</th><th>Total</th><th>Estado</th><th>Entrega</th></tr><tbody id="ot"></tbody></table></div></div>
 <div class="box"><b>QR por revendedor</b><div class="qrw"><div><label for="qs">Revendedor</label><select id="qs"></select><small id="qu"></small></div><div id="qi"></div></div>
@@ -42,6 +43,7 @@
 <div id="ch"></div><div id="qr"></div>
 <div class="row"><input id="in" placeholder="Escribí tu consulta…" onkeydown="if(event.key==='Enter')free()"><button class="go" onclick="free()">Enviar</button></div>
 <small class="eqc">Equivale a: ManyChat en WhatsApp o Instagram</small></div>
+<div id="lg" hidden role="dialog" aria-label="Acceso del dueño"><div class="lgb"><b>Acceso del dueño</b><small>Ingresá con tu cuenta para ver pedidos, stock y alertas.</small><label for="le">Correo</label><input id="le" type="email" autocomplete="username"><label for="lp">Contraseña</label><input id="lp" type="password" autocomplete="current-password"><div id="lm" role="alert"></div><div class="lgr"><button id="lx" class="own" type="button">Cancelar</button><button id="lb" class="go" type="button">Ingresar</button></div></div></div>
 <div id="toast" hidden></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
